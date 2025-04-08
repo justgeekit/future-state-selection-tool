@@ -1,64 +1,87 @@
-from dash import Dash, html, dcc, Input, Output, State
-import dash_bootstrap_components as dbc
+# Install Dash if not already installed: pip install dash
+from dash import Dash, dcc, html, Input, Output
+import pandas as pd
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# Initialize Dash app
+app = Dash(__name__)
 
-criteria = [
-    "Promote workforce diversity",
-    "Ensure knowledge transfer",
-    "Address aging workforce",
-    "Adopt AI and automation",
-    "Implement modular construction",
-    "Upskill workforce for emerging tech",
-    "Develop leadership capabilities",
-    "Integrate sustainability practices",
-    "Enhance collaboration",
-    "Build continuous learning frameworks",
-    "Scenario-specific training (AI, green tech)",
-    "Improve retention practices",
-    "Manage workforce mobility"
-]
+# Define categories and criteria
+categories = {
+    "Demographics Management": [
+        "Promote workforce diversity",
+        "Ensure knowledge transfer",
+        "Address aging workforce"
+    ],
+    "Technology Integration": [
+        "Adopt AI and automation",
+        "Implement modular construction",
+        "Upskill workforce for emerging tech"
+    ],
+    "Core Competencies": [
+        "Develop leadership capabilities",
+        "Integrate sustainability practices",
+        "Enhance collaboration"
+    ],
+    "Training Programs": [
+        "Build continuous learning frameworks",
+        "Scenario-specific training (AI, green tech)"
+    ],
+    "Challenges": [
+        "Improve retention practices",
+        "Manage workforce mobility"
+    ]
+}
 
-def generate_row(i, label):
-    return dbc.Row([
-        dbc.Col(html.Div(label), width=4),
-        dbc.Col(dcc.Input(id=f'priority-{i}', type='number', min=1, max=5, placeholder='Priority (1-5)'), width=2),
-        dbc.Col(dcc.Input(id=f'readiness-{i}', type='number', min=1, max=5, placeholder='Readiness (1-5)'), width=2),
-        dbc.Col(html.Div(id=f'gap-{i}'), width=2),
-    ], className='mb-2')
-
+# Generate layout dynamically
 app.layout = html.Div([
-    html.H2("Future State Selection Tool"),
+    html.H1("Future State Selection Tool", style={'text-align': 'center'}),
+    dcc.Tabs(id="category-tabs", value="Demographics Management", children=[
+        dcc.Tab(label=category, value=category) for category in categories.keys()
+    ]),
+    html.Div(id="category-content"),
     html.Hr(),
-    html.Div([generate_row(i, label) for i, label in enumerate(criteria)]),
-    html.Br(),
-    dbc.Button("Calculate Gaps", id="calc-btn", color="primary"),
-    html.Div(id="summary", className='mt-4')
+    html.Div(id="summary")
 ])
 
+# Callbacks for rendering each category's content
 @app.callback(
-    Output("summary", "children"),
-    Input("calc-btn", "n_clicks"),
-    [State(f'priority-{i}', 'value') for i in range(len(criteria))] +
-    [State(f'readiness-{i}', 'value') for i in range(len(criteria))]
+    Output("category-content", "children"),
+    Input("category-tabs", "value")
 )
-def calculate_summary(n_clicks, *values):
-    if not n_clicks:
-        return ""
-    n = len(criteria)
-    priority = values[:n]
-    readiness = values[n:]
-    gaps = []
-    total_gap = 0
-    for i in range(n):
-        if priority[i] is not None and readiness[i] is not None:
-            gap = abs(priority[i] - readiness[i])
-            gaps.append(gap)
-            total_gap += gap
+def render_category(category):
+    criteria = categories[category]
     return html.Div([
-        html.H5("Assessment Summary"),
-        html.P(f"Total Gap Score across all categories: {total_gap}")
+        html.H3(f"{category}"),
+        html.Table([
+            html.Tr([
+                html.Th("Criterion"),
+                html.Th("Priority (1-5)"),
+                html.Th("Readiness (1-5)"),
+                html.Th("Gap"),
+                html.Th("Comments")
+            ])
+        ] + [
+            html.Tr([
+                html.Td(criterion),
+                html.Td(dcc.Input(id=f"priority-{category}-{i}", type="number", min=1, max=5, value=1)),
+                html.Td(dcc.Input(id=f"readiness-{category}-{i}", type="number", min=1, max=5, value=1)),
+                html.Td(id=f"gap-{category}-{i}"),
+                html.Td(dcc.Input(id=f"comments-{category}-{i}", type="text"))
+            ]) for i, criterion in enumerate(criteria)
+        ])
     ])
 
+# Callback to calculate gaps dynamically
+@app.callback(
+    Output("gap-Demographics Management-0", "children"),
+    Input("priority-Demographics Management-0", "value"),
+    Input("readiness-Demographics Management-0", "value")
+)
+def calculate_gap(priority, readiness):
+    if priority and readiness:
+        return str(priority - readiness)
+    return "--"
+
+# Run app
 if __name__ == '__main__':
     app.run_server(debug=True)
